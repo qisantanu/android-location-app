@@ -32,7 +32,6 @@ class LocationService : Service() {
         
         Logger.init(this)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        locationRepository = LocationRepository(this)
         
         createNotificationChannel()
         setupLocationCallback()
@@ -43,6 +42,10 @@ class LocationService : Service() {
         when (intent?.action) {
             "START_TRACKING" -> {
                 if (!isTracking) {
+                    val apiUrl = intent.getStringExtra("API_URL") ?: "http://192.168.29.181:3000/api/v1/"
+                    locationRepository = LocationRepository(this, apiUrl)
+                    Logger.log("Using API URL: $apiUrl")
+                    
                     startForeground(NOTIFICATION_ID, createNotification())
                     startLocationUpdates()
                     isTracking = true
@@ -57,6 +60,7 @@ class LocationService : Service() {
                 Logger.log("Location tracking stopped")
             }
             else -> {
+                locationRepository = LocationRepository(this, "http://192.168.29.181:3000/api/v1/")
                 startForeground(NOTIFICATION_ID, createNotification())
                 startLocationUpdates()
                 isTracking = true

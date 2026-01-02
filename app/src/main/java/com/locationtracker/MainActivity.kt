@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -16,6 +17,7 @@ import com.locationtracker.utils.Logger
 class MainActivity : AppCompatActivity() {
     
     private val LOCATION_PERMISSION_REQUEST_CODE = 1001
+    private lateinit var etApiUrl: EditText
     private lateinit var btnStartTracking: Button
     private lateinit var btnStopTracking: Button
     private lateinit var tvLog: TextView
@@ -28,6 +30,7 @@ class MainActivity : AppCompatActivity() {
         
         Logger.init(this)
         
+        etApiUrl = findViewById(R.id.etApiUrl)
         btnStartTracking = findViewById(R.id.btnStartTracking)
         btnStopTracking = findViewById(R.id.btnStopTracking)
         tvLog = findViewById(R.id.tvLog)
@@ -79,9 +82,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startLocationService() {
-        Logger.log("Starting location tracking service")
+        val apiUrl = etApiUrl.text.toString().trim()
+        if (apiUrl.isEmpty()) {
+            Logger.log("API URL cannot be empty")
+            return
+        }
+        
+        Logger.log("Starting location tracking with URL: $apiUrl")
         val serviceIntent = Intent(this, LocationService::class.java)
         serviceIntent.action = "START_TRACKING"
+        serviceIntent.putExtra("API_URL", apiUrl)
         ContextCompat.startForegroundService(this, serviceIntent)
     }
     

@@ -12,7 +12,7 @@ import kotlinx.coroutines.withContext
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-class LocationRepository(context: Context) {
+class LocationRepository(context: Context, apiBaseUrl: String = "http://192.168.29.181:3000/api/v1/") {
     
     init {
         Logger.init(context)
@@ -27,7 +27,7 @@ class LocationRepository(context: Context) {
     private val locationDao = database.locationDao()
     
     private val apiService = Retrofit.Builder()
-        .baseUrl("http://192.168.29.181:3000/api/v1/")
+        .baseUrl(apiBaseUrl)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(LocationApiService::class.java)
