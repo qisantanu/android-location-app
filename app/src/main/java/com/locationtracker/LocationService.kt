@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.locationtracker.data.LocationData
 import com.locationtracker.repository.LocationRepository
+import com.locationtracker.utils.Logger
 import kotlinx.coroutines.*
 
 class LocationService : Service() {
@@ -18,6 +19,7 @@ class LocationService : Service() {
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRepository: LocationRepository
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var isTracking = false
     
     companion object {
         private const val NOTIFICATION_ID = 1
@@ -28,16 +30,39 @@ class LocationService : Service() {
     override fun onCreate() {
         super.onCreate()
         
+        Logger.init(this)
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         locationRepository = LocationRepository(this)
         
         createNotificationChannel()
         setupLocationCallback()
+        Logger.log("LocationService created")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIFICATION_ID, createNotification())
-        startLocationUpdates()
+        when (intent?.action) {
+            "START_TRACKING" -> {
+                if (!isTracking) {
+                    startForeground(NOTIFICATION_ID, createNotification())
+                    startLocationUpdates()
+                    isTracking = true
+                    Logger.log("Location tracking started")
+                }
+            }
+            "STOP_TRACKING" -> {
+                stopLocationUpdates()
+                stopForeground(true)
+                stopSelf()
+                isTracking = false
+                Logger.log("Location tracking stopped")
+            }
+            else -> {
+                startForeground(NOTIFICATION_ID, createNotification())
+                startLocationUpdates()
+                isTracking = true
+                Logger.log("Location tracking started (default)")
+            }
+        }
         return START_STICKY
     }
 
@@ -56,7 +81,7 @@ class LocationService : Service() {
     private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Location Tracking")
-            .setContentText("Tracking location in background")
+            .setContentText("Tracking location every 30 seconds")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .build()
     }
@@ -83,9 +108,15 @@ class LocationService : Service() {
                 locationCallback,
                 Looper.getMainLooper()
             )
+            Logger.log("Location updates requested successfully")
         } catch (e: SecurityException) {
-            // Handle permission error
+            Logger.log("Permission error: ${e.message}")
         }
+    }
+    
+    private fun stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+        Logger.log("Location updates stopped")
     }
 
     private fun handleLocationUpdate(location: Location) {
@@ -97,6 +128,8 @@ class LocationService : Service() {
             timestamp = System.currentTimeMillis()
         )
 
+        Logger.log("Location: ${location.latitude}, ${location.longitude} (±${location.accuracy}m)")
+
         serviceScope.launch {
             locationRepository.saveLocation(locationData)
             locationRepository.syncLocations()
@@ -105,7 +138,8 @@ class LocationService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
+        stopLocationUpdates()
         serviceScope.cancel()
+        Logger.log("LocationService destroyed")
     }
 }
