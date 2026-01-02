@@ -6,8 +6,8 @@ import androidx.room.*
 data class LocationEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val latitude: Double,
-    val longitude: Double,
+    val lat: Double,
+    val lng: Double,
     val accuracy: Float,
     val timestamp: Long,
     val synced: Boolean = false

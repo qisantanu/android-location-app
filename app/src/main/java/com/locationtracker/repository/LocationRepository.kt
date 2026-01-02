@@ -30,8 +30,8 @@ class LocationRepository(context: Context) {
     suspend fun saveLocation(locationData: LocationData) {
         withContext(Dispatchers.IO) {
             val entity = LocationEntity(
-                latitude = locationData.lat,
-                longitude = locationData.lng,
+                lat = locationData.lat,
+                lng = locationData.lng,
                 accuracy = locationData.accuracy,
                 timestamp = locationData.timestamp
             )
@@ -48,8 +48,8 @@ class LocationRepository(context: Context) {
                 for (location in unsyncedLocations) {
                     try {
                         val locationData = LocationData(
-                            lat = location.latitude,
-                            lng = location.longitude,
+                            lat = location.lat,
+                            lng = location.lng,
                             trip_details = "---",
                             accuracy = location.accuracy,
                             timestamp = location.timestamp
