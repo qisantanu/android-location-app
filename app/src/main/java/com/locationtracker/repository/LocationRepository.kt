@@ -14,6 +14,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 class LocationRepository(context: Context) {
     
+    init {
+        Logger.init(context)
+    }
+    
     private val database = Room.databaseBuilder(
         context.applicationContext,
         LocationDatabase::class.java,
