@@ -7,5 +7,5 @@ import retrofit2.http.POST
 
 interface LocationApiService {
     @POST("locations")
-    suspend fun sendLocation(@Body location: LocationData): Response<Unit>
+    suspend fun sendLocations(@Body locations: List<LocationData>): Response<Unit>
 }

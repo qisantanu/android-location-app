@@ -58,29 +58,37 @@ class LocationRepository(context: Context, apiBaseUrl: String = "http://192.168.
                 if (unsyncedLocations.isEmpty()) return@withContext
                 
                 val syncedIds = mutableListOf<Long>()
-                
-                for (location in unsyncedLocations) {
+
+                // Send unsynced locations in batches to reduce API interactions
+                val batchSize = 50
+                val chunks = unsyncedLocations.chunked(batchSize)
+
+                for ((index, batch) in chunks.withIndex()) {
                     try {
-                        val locationData = LocationData(
-                            lat = location.lat,
-                            lng = location.lng,
-                            trip_details = "---",
-                            accuracy = location.accuracy,
-                            timestamp = location.timestamp
-                        )
-                        
-                        val response = apiService.sendLocation(locationData)
+                        val batchData = batch.map { location ->
+                            LocationData(
+                                lat = location.lat,
+                                lng = location.lng,
+                                trip_details = "---",
+                                accuracy = location.accuracy,
+                                timestamp = location.timestamp,
+                                id = location.id
+                            )
+                        }
+
+                        val response = apiService.sendLocations(batchData)
                         if (response.isSuccessful) {
-                            syncedIds.add(location.id)
-                            Logger.log("API call successful for location ${location.id}")
+                            val ids = batch.map { it.id }
+                            syncedIds.addAll(ids)
+                            Logger.log("Batch ${index + 1}/${chunks.size} synced: ${ids.size} locations")
                         } else {
-                            Logger.log("API call failed: ${response.code()} - ${response.message()}")
+                            Logger.log("Batch ${index + 1}/${chunks.size} failed: ${response.code()} - ${response.message()}")
                         }
                     } catch (e: Exception) {
-                        Logger.log("API call error: ${e.message}")
+                        Logger.log("Batch ${index + 1}/${chunks.size} API error: ${e.message}")
                     }
                 }
-                
+
                 if (syncedIds.isNotEmpty()) {
                     locationDao.markAsSynced(syncedIds)
                     Logger.log("Marked ${syncedIds.size} locations as synced")
@@ -92,6 +100,17 @@ class LocationRepository(context: Context, apiBaseUrl: String = "http://192.168.
                 
             } catch (e: Exception) {
                 Logger.log("Sync error: ${e.message}")
+            }
+        }
+    }
+
+    suspend fun getUnsyncedCount(): Int {
+        return withContext(Dispatchers.IO) {
+            try {
+                locationDao.getUnsyncedLocations().size
+            } catch (e: Exception) {
+                Logger.log("Count error: ${e.message}")
+                0
             }
         }
     }
