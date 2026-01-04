@@ -60,7 +60,7 @@ class LocationRepository(context: Context, apiBaseUrl: String = "http://192.168.
                 val syncedIds = mutableListOf<Long>()
 
                 // Send unsynced locations in batches to reduce API interactions
-                val batchSize = 50
+                val batchSize = 10
                 val chunks = unsyncedLocations.chunked(batchSize)
 
                 for ((index, batch) in chunks.withIndex()) {

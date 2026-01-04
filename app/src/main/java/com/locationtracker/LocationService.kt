@@ -156,11 +156,11 @@ class LocationService : Service() {
 
             try {
                 val unsyncedCount = locationRepository.getUnsyncedCount()
-                if (unsyncedCount >= 50) {
-                    Logger.log("Unsynced count $unsyncedCount >= 50, syncing now")
+                if (unsyncedCount >= 10) {
+                    Logger.log("Unsynced count $unsyncedCount >= 10, syncing now")
                     locationRepository.syncLocations()
                 } else {
-                    Logger.log("Unsynced count $unsyncedCount < 50, deferring sync")
+                    Logger.log("Unsynced count $unsyncedCount < 10, deferring sync")
                 }
             } catch (e: Exception) {
                 Logger.log("Error checking unsynced count: ${e.message}")
