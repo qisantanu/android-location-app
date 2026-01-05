@@ -53,11 +53,28 @@ class LocationService : Service() {
                 }
             }
             "STOP_TRACKING" -> {
-                stopLocationUpdates()
-                stopForeground(true)
-                stopSelf()
-                isTracking = false
-                Logger.log("Location tracking stopped")
+                if (::locationRepository.isInitialized) {
+                    serviceScope.launch {
+                        try {
+                            Logger.log("Final sync: syncing all unsynced locations before stopping")
+                            locationRepository.syncLocations()
+                        } catch (e: Exception) {
+                            Logger.log("Final sync error: ${e.message}")
+                        } finally {
+                            stopLocationUpdates()
+                            stopForeground(true)
+                            stopSelf()
+                            isTracking = false
+                            Logger.log("Location tracking stopped")
+                        }
+                    }
+                } else {
+                    stopLocationUpdates()
+                    stopForeground(true)
+                    stopSelf()
+                    isTracking = false
+                    Logger.log("Location tracking stopped")
+                }
             }
             else -> {
                 locationRepository = LocationRepository(this, "http://192.168.29.181:3000/api/v1/")
@@ -136,7 +153,18 @@ class LocationService : Service() {
 
         serviceScope.launch {
             locationRepository.saveLocation(locationData)
-            locationRepository.syncLocations()
+
+            try {
+                val unsyncedCount = locationRepository.getUnsyncedCount()
+                if (unsyncedCount >= 10) {
+                    Logger.log("Unsynced count $unsyncedCount >= 10, syncing now")
+                    locationRepository.syncLocations()
+                } else {
+                    Logger.log("Unsynced count $unsyncedCount < 10, deferring sync")
+                }
+            } catch (e: Exception) {
+                Logger.log("Error checking unsynced count: ${e.message}")
+            }
         }
     }
 
