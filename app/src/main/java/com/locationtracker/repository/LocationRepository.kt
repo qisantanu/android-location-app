@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.locationtracker.api.LocationApiService
 import com.locationtracker.data.LocationData
+import com.locationtracker.data.LocationsPayload
 import com.locationtracker.data.LocationDatabase
 import com.locationtracker.data.LocationEntity
 import com.locationtracker.utils.Logger
@@ -60,7 +61,7 @@ class LocationRepository(context: Context, apiBaseUrl: String = "http://192.168.
                 val syncedIds = mutableListOf<Long>()
 
                 // Send unsynced locations in batches to reduce API interactions
-                val batchSize = 10
+                val batchSize = 50
                 val chunks = unsyncedLocations.chunked(batchSize)
 
                 for ((index, batch) in chunks.withIndex()) {
@@ -76,7 +77,8 @@ class LocationRepository(context: Context, apiBaseUrl: String = "http://192.168.
                             )
                         }
 
-                        val response = apiService.sendLocations(batchData)
+                        val payload = LocationsPayload(batchData)
+                        val response = apiService.sendLocations(payload)
                         if (response.isSuccessful) {
                             val ids = batch.map { it.id }
                             syncedIds.addAll(ids)
