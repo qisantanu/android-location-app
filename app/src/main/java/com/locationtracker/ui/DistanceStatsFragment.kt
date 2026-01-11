@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.textview.MaterialTextView
+import com.locationtracker.BuildConfig
 import com.locationtracker.R
 import com.locationtracker.viewmodel.DistanceStatsViewModel
 import java.text.SimpleDateFormat
@@ -26,6 +27,7 @@ class DistanceStatsFragment : Fragment() {
     private lateinit var activeTripsText: MaterialTextView
     private lateinit var locationsCountText: MaterialTextView
     private lateinit var lastUpdatedText: MaterialTextView
+    private lateinit var appVersionText: MaterialTextView
     private lateinit var loadingIndicator: View
     private lateinit var errorMessage: MaterialTextView
     
@@ -41,6 +43,8 @@ class DistanceStatsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         
         initializeViews(view)
+        // Set version text after views are initialized
+        appVersionText.text = "v${BuildConfig.VERSION_NAME}"
         setupObservers()
         setupSwipeRefresh()
     }
@@ -54,6 +58,7 @@ class DistanceStatsFragment : Fragment() {
         activeTripsText = view.findViewById(R.id.activeTripsValue)
         locationsCountText = view.findViewById(R.id.locationsCountValue)
         lastUpdatedText = view.findViewById(R.id.lastUpdatedValue)
+        appVersionText = view.findViewById(R.id.appVersionValue)
         loadingIndicator = view.findViewById(R.id.loadingIndicator)
         errorMessage = view.findViewById(R.id.errorMessage)
     }

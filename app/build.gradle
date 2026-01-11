@@ -12,8 +12,10 @@ android {
         applicationId "com.locationtracker"
         minSdk 29
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        def vc = project.hasProperty('VERSION_CODE') ? project.VERSION_CODE.toInteger() : 1
+        def vn = project.hasProperty('VERSION_NAME') ? project.VERSION_NAME : "1.0"
+        versionCode vc
+        versionName vn
     }
 
     buildTypes {
@@ -50,4 +52,14 @@ dependencies {
     
     // Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+    
+    // ViewModel and LiveData
+    implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2'
+    implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.6.2'
+    
+    // Fragment
+    implementation 'androidx.fragment:fragment-ktx:1.6.2'
+    
+    // Material Design
+    implementation 'com.google.android.material:material:1.11.0'
 }

@@ -41,6 +41,15 @@
                     android:textColor="#757575"
                     android:layout_marginBottom="16dp" />
 
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/appVersionValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="v1.0"
+                    android:textSize="12sp"
+                    android:textColor="#9E9E9E"
+                    android:layout_marginTop="2dp" />
+
             </LinearLayout>
 
             <!-- Last Updated Section -->
