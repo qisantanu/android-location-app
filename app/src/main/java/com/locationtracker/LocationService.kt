@@ -99,7 +99,15 @@ class LocationService : Service() {
 
         serviceScope.launch {
             locationRepository.saveLocation(locationData)
-            locationRepository.syncLocations()
+
+            try {
+                val unsyncedCount = locationRepository.getUnsyncedCount()
+                if (unsyncedCount >= 10) {
+                    locationRepository.syncLocations()
+                }
+            } catch (e: Exception) {
+                // Ignore errors here; sync will be retried later
+            }
         }
     }
 

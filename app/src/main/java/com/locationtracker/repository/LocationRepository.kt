@@ -39,31 +39,47 @@ class LocationRepository(context: Context) {
         }
     }
 
+    suspend fun getUnsyncedCount(): Int {
+        return withContext(Dispatchers.IO) {
+            locationDao.getUnsyncedCount()
+        }
+    }
+
     suspend fun syncLocations() {
         withContext(Dispatchers.IO) {
             try {
                 val unsyncedLocations = locationDao.getUnsyncedLocations()
+
+                val BATCH_THRESHOLD = 10
                 val syncedIds = mutableListOf<Long>()
-                
-                for (location in unsyncedLocations) {
-                    try {
-                        val locationData = LocationData(
-                            lat = location.latitude,
-                            lng = location.longitude,
-                            trip_details = "---",
-                            accuracy = location.accuracy,
-                            timestamp = location.timestamp
-                        )
-                        
-                        val response = apiService.sendLocation(locationData)
-                        if (response.isSuccessful) {
-                            syncedIds.add(location.id)
+
+                // Only send in bulk when we have at least the threshold
+                if (unsyncedLocations.size >= BATCH_THRESHOLD) {
+                    // Send in batches of BATCH_THRESHOLD
+                    val chunks = unsyncedLocations.chunked(BATCH_THRESHOLD)
+                    for (chunk in chunks) {
+                        try {
+                            val locationDataList = chunk.map { location ->
+                                LocationData(
+                                    lat = location.latitude,
+                                    lng = location.longitude,
+                                    trip_details = "---",
+                                    accuracy = location.accuracy,
+                                    timestamp = location.timestamp,
+                                    id = location.id
+                                )
+                            }
+
+                            val response = apiService.sendLocations(locationDataList)
+                            if (response.isSuccessful) {
+                                syncedIds.addAll(chunk.map { it.id })
+                            }
+                        } catch (e: Exception) {
+                            // Continue with next chunk on failure
                         }
-                    } catch (e: Exception) {
-                        // Continue with next location on individual failure
                     }
                 }
-                
+
                 if (syncedIds.isNotEmpty()) {
                     locationDao.markAsSynced(syncedIds)
                 }

@@ -18,6 +18,9 @@ interface LocationDao {
     @Insert
     suspend fun insert(location: LocationEntity): Long
 
+    @Query("SELECT COUNT(*) FROM locations WHERE synced = 0")
+    suspend fun getUnsyncedCount(): Int
+
     @Query("SELECT * FROM locations WHERE synced = 0")
     suspend fun getUnsyncedLocations(): List<LocationEntity>
 
