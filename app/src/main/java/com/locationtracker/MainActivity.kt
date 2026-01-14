@@ -6,14 +6,18 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.locationtracker.data.AppPreferences
+import com.locationtracker.repository.LogRepository
+import com.locationtracker.ui.LogAdapter
+import kotlinx.coroutines.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -23,65 +27,69 @@ class MainActivity : AppCompatActivity() {
     private lateinit var saveButton: Button
     private lateinit var startButton: Button
     private lateinit var stopButton: Button
+    private lateinit var logRecyclerView: RecyclerView
+    private lateinit var logAdapter: LogAdapter
+
+    private lateinit var logRepository: LogRepository
+    private val activityScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Basic UI
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(50, 50, 50, 50)
-        }
+        logRepository = LogRepository(this)
 
-        urlEditText = EditText(this).apply {
-            hint = "Enter backend URL"
-            setText(AppPreferences.getBaseUrl(this@MainActivity))
-        }
+        setContentView(R.layout.activity_main)
 
-        saveButton = Button(this).apply {
-            text = "Save URL"
-            setOnClickListener {
-                val newUrl = urlEditText.text.toString().trim()
-                if (newUrl.isNotEmpty()) {
-                    AppPreferences.setBaseUrl(this@MainActivity, newUrl)
-                    Toast.makeText(this@MainActivity, "URL saved!", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this@MainActivity, "URL cannot be empty", Toast.LENGTH_SHORT).show()
-                }
+        // Initialize views
+        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
+        supportActionBar?.setTitle(R.string.app_name)
+
+        urlEditText = findViewById(R.id.urlEditText)
+        saveButton = findViewById(R.id.saveButton)
+        startButton = findViewById(R.id.startButton)
+        stopButton = findViewById(R.id.stopButton)
+        logRecyclerView = findViewById(R.id.logRecyclerView)
+
+        // Set initial URL
+        urlEditText.setText(AppPreferences.getBaseUrl(this))
+
+        // Set up button listeners
+        saveButton.setOnClickListener {
+            val newUrl = urlEditText.text.toString().trim()
+            if (newUrl.isNotEmpty()) {
+                AppPreferences.setBaseUrl(this, newUrl)
+                Toast.makeText(this, "URL saved!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "URL cannot be empty", Toast.LENGTH_SHORT).show()
             }
         }
 
-        startButton = Button(this).apply {
-            text = "Start Tracking"
-            setOnClickListener {
-                if (hasLocationPermissions()) {
-                    startLocationService()
-                    updateButtonStates()
-                } else {
-                    requestLocationPermissions()
-                }
-            }
-        }
-
-        stopButton = Button(this).apply {
-            text = "Stop Tracking"
-            setOnClickListener {
-                stopLocationService()
+        startButton.setOnClickListener {
+            if (hasLocationPermissions()) {
+                startLocationService()
                 updateButtonStates()
+            } else {
+                requestLocationPermissions()
             }
         }
 
-        layout.addView(urlEditText)
-        layout.addView(saveButton)
-        layout.addView(startButton)
-        layout.addView(stopButton)
+        stopButton.setOnClickListener {
+            stopLocationService()
+            updateButtonStates()
+        }
 
-        setContentView(layout)
+        // Set up RecyclerView for logs
+        logAdapter = LogAdapter()
+        logRecyclerView.layoutManager = LinearLayoutManager(this)
+        logRecyclerView.adapter = logAdapter
 
         if (!hasLocationPermissions()) {
             requestLocationPermissions()
         }
         updateButtonStates()
+
+        activityScope.launch { loadLogs() }
     }
 
     private fun hasLocationPermissions(): Boolean {
@@ -117,12 +125,14 @@ class MainActivity : AppCompatActivity() {
         val serviceIntent = Intent(this, LocationService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
         Toast.makeText(this, "Location tracking started.", Toast.LENGTH_SHORT).show()
+        activityScope.launch { loadLogs() } // Refresh logs after starting service
     }
 
     private fun stopLocationService() {
         val serviceIntent = Intent(this, LocationService::class.java)
         stopService(serviceIntent)
         Toast.makeText(this, "Location tracking stopped.", Toast.LENGTH_SHORT).show()
+        activityScope.launch { loadLogs() } // Refresh logs after stopping service
     }
 
     private fun isLocationServiceRunning(): Boolean {
@@ -137,14 +147,32 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateButtonStates() {
         val isRunning = isLocationServiceRunning()
-        val hasPermissions = hasLocationPermissions()
-
-        startButton.isEnabled = !isRunning && hasPermissions
+        startButton.isEnabled = !isRunning
         stopButton.isEnabled = isRunning
+    }
+
+    private suspend fun loadLogs() {
+        withContext(Dispatchers.IO) {
+            val logs = logRepository.getAllLogs()
+            withContext(Dispatchers.Main) {
+                logAdapter.submitList(logs)
+                logRecyclerView.scrollToPosition(0) // Scroll to top for newest logs
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
         updateButtonStates()
+        activityScope.launch { loadLogs() } // Refresh logs when activity resumes
+    }
+
+    override fun onPause() {
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        activityScope.cancel() // Cancel coroutine scope
     }
 }

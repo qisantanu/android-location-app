@@ -10,15 +10,17 @@ import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
 import com.locationtracker.data.LocationData
 import com.locationtracker.repository.LocationRepository
+import com.locationtracker.repository.LogRepository
 import kotlinx.coroutines.*
 
 class LocationService : Service() {
-    
+
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRepository: LocationRepository
-    private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    
+    private lateinit var logRepository: LogRepository // New
+    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     companion object {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "LocationServiceChannel"
@@ -27,17 +29,23 @@ class LocationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        
+
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         locationRepository = LocationRepository(this)
-        
+        logRepository = LogRepository(this) // Initialize LogRepository
+
         createNotificationChannel()
         setupLocationCallback()
+        serviceScope.launch { // Clean old logs on service start
+            logRepository.cleanOldLogs()
+        }
+        log("INFO", "Location service created.")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         startForeground(NOTIFICATION_ID, createNotification())
         startLocationUpdates()
+        log("INFO", "Location tracking started.")
         return START_STICKY
     }
 
@@ -84,11 +92,12 @@ class LocationService : Service() {
                 Looper.getMainLooper()
             )
         } catch (e: SecurityException) {
-            // Handle permission error
+            log("ERROR", "Location permission missing: ${e.message}")
         }
     }
 
     private fun handleLocationUpdate(location: Location) {
+        log("INFO", "New location received: Lat=${location.latitude}, Lng=${location.longitude}")
         val locationData = LocationData(
             lat = location.latitude,
             lng = location.longitude,
@@ -99,14 +108,16 @@ class LocationService : Service() {
 
         serviceScope.launch {
             locationRepository.saveLocation(locationData)
+            log("INFO", "Location saved locally.")
 
             try {
                 val unsyncedCount = locationRepository.getUnsyncedCount()
                 if (unsyncedCount >= 10) {
+                    log("INFO", "Threshold reached. Syncing $unsyncedCount locations.")
                     locationRepository.syncLocations()
                 }
             } catch (e: Exception) {
-                // Ignore errors here; sync will be retried later
+                log("ERROR", "Failed to sync locations: ${e.message}")
             }
         }
     }
@@ -115,5 +126,12 @@ class LocationService : Service() {
         super.onDestroy()
         fusedLocationClient.removeLocationUpdates(locationCallback)
         serviceScope.cancel()
+        log("INFO", "Location tracking stopped.")
+    }
+
+    private fun log(status: String, message: String) {
+        serviceScope.launch {
+            logRepository.insertLog(status, message)
+        }
     }
 }
