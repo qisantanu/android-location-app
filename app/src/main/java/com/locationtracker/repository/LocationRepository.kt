@@ -2,30 +2,26 @@ package com.locationtracker.repository
 
 import android.content.Context
 import androidx.room.Room
-import com.locationtracker.api.LocationApiService
+import com.locationtracker.api.NetworkClient
 import com.locationtracker.data.LocationData
 import com.locationtracker.data.LocationDatabase
 import com.locationtracker.data.LocationEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 
-class LocationRepository(context: Context) {
-    
+class LocationRepository(private val context: Context) {
+
     private val database = Room.databaseBuilder(
         context.applicationContext,
         LocationDatabase::class.java,
         "location_database"
     ).build()
-    
+
     private val locationDao = database.locationDao()
-    
-    private val apiService = Retrofit.Builder()
-        .baseUrl("http://192.168.29.181:3000/api/v1/")
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-        .create(LocationApiService::class.java)
+
+    private val apiService by lazy {
+        NetworkClient.create(context)
+    }
 
     suspend fun saveLocation(locationData: LocationData) {
         withContext(Dispatchers.IO) {
