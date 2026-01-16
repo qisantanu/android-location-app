@@ -10,14 +10,14 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.locationtracker.data.AppPreferences
 import com.locationtracker.repository.LogRepository
 import com.locationtracker.ui.LogAdapter
 import kotlinx.coroutines.*
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlinx.coroutines.flow.collect
 
 class MainActivity : AppCompatActivity() {
 
@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
         }
         updateButtonStates()
 
-        activityScope.launch { loadLogs() }
+        observeLogs() // Start observing logs
     }
 
     private fun hasLocationPermissions(): Boolean {
@@ -125,14 +125,12 @@ class MainActivity : AppCompatActivity() {
         val serviceIntent = Intent(this, LocationService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
         Toast.makeText(this, "Location tracking started.", Toast.LENGTH_SHORT).show()
-        activityScope.launch { loadLogs() } // Refresh logs after starting service
     }
 
     private fun stopLocationService() {
         val serviceIntent = Intent(this, LocationService::class.java)
         stopService(serviceIntent)
         Toast.makeText(this, "Location tracking stopped.", Toast.LENGTH_SHORT).show()
-        activityScope.launch { loadLogs() } // Refresh logs after stopping service
     }
 
     private fun isLocationServiceRunning(): Boolean {
@@ -151,12 +149,14 @@ class MainActivity : AppCompatActivity() {
         stopButton.isEnabled = isRunning
     }
 
-    private suspend fun loadLogs() {
-        withContext(Dispatchers.IO) {
-            val logs = logRepository.getAllLogs()
-            withContext(Dispatchers.Main) {
+    private fun observeLogs() {
+        lifecycleScope.launch {
+            logRepository.getAllLogs().collect { logs ->
                 logAdapter.submitList(logs)
-                logRecyclerView.scrollToPosition(0) // Scroll to top for newest logs
+                // Scroll to top for newest logs if there are any
+                if (logs.isNotEmpty()) {
+                    logRecyclerView.scrollToPosition(0)
+                }
             }
         }
     }
@@ -164,7 +164,6 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateButtonStates()
-        activityScope.launch { loadLogs() } // Refresh logs when activity resumes
     }
 
     override fun onPause() {

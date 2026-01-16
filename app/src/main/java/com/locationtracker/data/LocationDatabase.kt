@@ -31,7 +31,7 @@ interface LocationDao {
     suspend fun deleteOldSyncedLocations(cutoffTime: Long)
 }
 
-@Database(entities = [LocationEntity::class], version = 1, exportSchema = false)
+@Database(entities = [LocationEntity::class], version = 2, exportSchema = false)
 abstract class LocationDatabase : RoomDatabase() {
     abstract fun locationDao(): LocationDao
 }

@@ -18,8 +18,9 @@ class LocationService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationCallback: LocationCallback
     private lateinit var locationRepository: LocationRepository
-    private lateinit var logRepository: LogRepository // New
+    private lateinit var logRepository: LogRepository
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob()) // New Main Scope
 
     companion object {
         private const val NOTIFICATION_ID = 1
@@ -29,23 +30,35 @@ class LocationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        try {
+            logRepository = LogRepository(this)
+            log("INFO", "LocationService: onCreate called.")
 
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        locationRepository = LocationRepository(this)
-        logRepository = LogRepository(this) // Initialize LogRepository
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+            locationRepository = LocationRepository(this, logRepository) // Updated constructor
 
-        createNotificationChannel()
-        setupLocationCallback()
-        serviceScope.launch { // Clean old logs on service start
-            logRepository.cleanOldLogs()
+            createNotificationChannel()
+            setupLocationCallback()
+            mainScope.launch { // Clean old logs on service start, using mainScope
+                logRepository.cleanOldLogs()
+            }
+            log("INFO", "Location service created.")
+        } catch (e: Exception) {
+            log("CRITICAL", "LocationService: onCreate crashed: ${e.message}")
+            stopSelf() // Stop the service if it crashed during creation
         }
-        log("INFO", "Location service created.")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(NOTIFICATION_ID, createNotification())
-        startLocationUpdates()
-        log("INFO", "Location tracking started.")
+        try {
+            log("INFO", "LocationService: onStartCommand called.")
+            startForeground(NOTIFICATION_ID, createNotification())
+            startLocationUpdates()
+            log("INFO", "Location tracking started.")
+        } catch (e: Exception) {
+            log("CRITICAL", "LocationService: onStartCommand crashed: ${e.message}")
+            stopSelf() // Stop the service if it crashed during command handling
+        }
         return START_STICKY
     }
 
@@ -86,18 +99,23 @@ class LocationService : Service() {
         ).build()
 
         try {
-            fusedLocationClient.requestLocationUpdates(
-                locationRequest,
-                locationCallback,
-                Looper.getMainLooper()
-            )
+            mainScope.launch { // Ensure requestLocationUpdates is called on main thread
+                fusedLocationClient.requestLocationUpdates(
+                    locationRequest,
+                    locationCallback,
+                    Looper.getMainLooper()
+                )
+                log("INFO", "Location updates requested.")
+            }
         } catch (e: SecurityException) {
             log("ERROR", "Location permission missing: ${e.message}")
+        } catch (e: Exception) {
+            log("ERROR", "Failed to request location updates: ${e.message}")
         }
     }
 
     private fun handleLocationUpdate(location: Location) {
-        log("INFO", "New location received: Lat=${location.latitude}, Lng=${location.longitude}")
+        log("INFO", "New location received: Lat=${location.latitude}, Lng=${location.longitude}, Acc=${location.accuracy}")
         val locationData = LocationData(
             lat = location.latitude,
             lng = location.longitude,
@@ -106,32 +124,56 @@ class LocationService : Service() {
             timestamp = System.currentTimeMillis()
         )
 
-        serviceScope.launch {
-            locationRepository.saveLocation(locationData)
-            log("INFO", "Location saved locally.")
-
+        serviceScope.launch { // Save and sync operations on IO dispatcher
             try {
-                val unsyncedCount = locationRepository.getUnsyncedCount()
-                if (unsyncedCount >= 10) {
-                    log("INFO", "Threshold reached. Syncing $unsyncedCount locations.")
-                    locationRepository.syncLocations()
-                }
+                locationRepository.saveLocation(locationData)
+                log("INFO", "Location saved locally.")
+                locationRepository.syncLocations() // Let the repository handle the batching logic
             } catch (e: Exception) {
-                log("ERROR", "Failed to sync locations: ${e.message}")
+                log("ERROR", "Error in handleLocationUpdate (save/sync): ${e.message}")
             }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        fusedLocationClient.removeLocationUpdates(locationCallback)
-        serviceScope.cancel()
-        log("INFO", "Location tracking stopped.")
+        try {
+            log("INFO", "Stopping location updates and syncing remaining data.")
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+
+            // Perform a final, blocking sync to ensure all data is sent.
+            runBlocking {
+                try {
+                    val unsyncedCount = locationRepository.getUnsyncedCount()
+                    if (unsyncedCount > 0) {
+                        log("INFO", "Performing final sync of $unsyncedCount locations.")
+                        locationRepository.syncLocations()
+                    } else {
+                        log("INFO", "No unsynced locations to sync on shutdown.")
+                    }
+                } catch (e: Exception) {
+                    log("ERROR", "Final sync failed: ${e.message}")
+                }
+            }
+
+            // Cancel coroutine scopes after all operations are complete.
+            serviceScope.cancel()
+            mainScope.cancel()
+            log("INFO", "Location tracking stopped. Service destroyed.")
+        } catch (e: Exception) {
+            log("CRITICAL", "LocationService: onDestroy crashed: ${e.message}")
+        }
     }
 
     private fun log(status: String, message: String) {
-        serviceScope.launch {
-            logRepository.insertLog(status, message)
+        // Ensure logRepository is initialized before trying to log
+        if (this::logRepository.isInitialized) {
+            serviceScope.launch { // Log on IO dispatcher
+                logRepository.insertLog(status, message)
+            }
+        } else {
+            // Fallback logging if logRepository isn't ready (shouldn't happen after onCreate)
+            android.util.Log.e("LocationService", "LogRepository not initialized: $message")
         }
     }
 }

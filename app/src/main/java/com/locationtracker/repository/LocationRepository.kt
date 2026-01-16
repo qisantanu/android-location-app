@@ -8,14 +8,18 @@ import com.locationtracker.data.LocationDatabase
 import com.locationtracker.data.LocationEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.IOException
 
-class LocationRepository(private val context: Context) {
+class LocationRepository(
+    private val context: Context,
+    private val logRepository: LogRepository
+) {
 
     private val database = Room.databaseBuilder(
         context.applicationContext,
         LocationDatabase::class.java,
         "location_database"
-    ).build()
+    ).fallbackToDestructiveMigration().build()
 
     private val locationDao = database.locationDao()
 
@@ -43,50 +47,49 @@ class LocationRepository(private val context: Context) {
 
     suspend fun syncLocations() {
         withContext(Dispatchers.IO) {
-            try {
-                val unsyncedLocations = locationDao.getUnsyncedLocations()
+            val unsyncedLocations = locationDao.getUnsyncedLocations()
+            val BATCH_THRESHOLD = 5
+            val syncedIds = mutableListOf<Long>()
 
-                val BATCH_THRESHOLD = 10
-                val syncedIds = mutableListOf<Long>()
-
-                // Only send in bulk when we have at least the threshold
-                if (unsyncedLocations.size >= BATCH_THRESHOLD) {
-                    // Send in batches of BATCH_THRESHOLD
-                    val chunks = unsyncedLocations.chunked(BATCH_THRESHOLD)
-                    for (chunk in chunks) {
-                        try {
-                            val locationDataList = chunk.map { location ->
-                                LocationData(
-                                    lat = location.latitude,
-                                    lng = location.longitude,
-                                    trip_details = "---",
-                                    accuracy = location.accuracy,
-                                    timestamp = location.timestamp,
-                                    id = location.id
-                                )
-                            }
-
-                            val response = apiService.sendLocations(locationDataList)
-                            if (response.isSuccessful) {
-                                syncedIds.addAll(chunk.map { it.id })
-                            }
-                        } catch (e: Exception) {
-                            // Continue with next chunk on failure
+            if (unsyncedLocations.size >= BATCH_THRESHOLD) {
+                val chunks = unsyncedLocations.chunked(BATCH_THRESHOLD)
+                for (chunk in chunks) {
+                    try {
+                        val locationDataList = chunk.map { location ->
+                            LocationData(
+                                lat = location.latitude,
+                                lng = location.longitude,
+                                trip_details = "---",
+                                accuracy = location.accuracy,
+                                timestamp = location.timestamp,
+                                id = location.id
+                            )
                         }
+
+                        val response = apiService.sendLocations(locationDataList)
+                        if (response.isSuccessful) {
+                            syncedIds.addAll(chunk.map { it.id })
+                        } else {
+                            logRepository.insertLog(
+                                "ERROR",
+                                "API error (code: ${response.code()}): ${response.message()}"
+                            )
+                        }
+                    } catch (e: IOException) {
+                        logRepository.insertLog("ERROR", "Network error during sync: ${e.message}")
+                    } catch (e: Exception) {
+                        logRepository.insertLog("ERROR", "Unexpected error during sync: ${e.message}")
                     }
                 }
-
-                if (syncedIds.isNotEmpty()) {
-                    locationDao.markAsSynced(syncedIds)
-                }
-                
-                // Clean up old synced locations (older than 24 hours)
-                val cutoffTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
-                locationDao.deleteOldSyncedLocations(cutoffTime)
-                
-            } catch (e: Exception) {
-                // Log error but don't crash
             }
+
+            if (syncedIds.isNotEmpty()) {
+                locationDao.markAsSynced(syncedIds)
+            }
+
+            // Clean up old synced locations (older than 24 hours)
+            val cutoffTime = System.currentTimeMillis() - (24 * 60 * 60 * 1000)
+            locationDao.deleteOldSyncedLocations(cutoffTime)
         }
     }
 }

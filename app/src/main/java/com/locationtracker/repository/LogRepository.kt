@@ -3,6 +3,7 @@ package com.locationtracker.repository
 import android.content.Context
 import com.locationtracker.data.AppDatabase
 import com.locationtracker.data.LogEntry
+import kotlinx.coroutines.flow.Flow
 import java.util.concurrent.TimeUnit
 
 class LogRepository(context: Context) {
@@ -17,7 +18,7 @@ class LogRepository(context: Context) {
         logDao.insert(logEntry)
     }
 
-    suspend fun getAllLogs(): List<LogEntry> {
+    fun getAllLogs(): Flow<List<LogEntry>> {
         return logDao.getAllLogs()
     }
 
