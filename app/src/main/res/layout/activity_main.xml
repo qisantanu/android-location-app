@@ -18,28 +18,42 @@
         app:title="@string/app_name"
         android:layout_marginBottom="16dp" />
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="API Endpoint URL:"
-        android:textAppearance="?attr/textAppearanceBody1"
-        android:layout_marginBottom="4dp" />
-
-    <EditText
-        android:id="@+id/urlEditText"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Enter backend URL"
-        android:inputType="textUri"
-        android:layout_marginBottom="16dp" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
 
-    <Button
-        android:id="@+id/saveButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Save URL"
-        style="?attr/materialButtonStyle"
-        android:layout_marginBottom="16dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="API Endpoint URL:"
+            android:textAppearance="?attr/textAppearanceBody1"
+            android:layout_marginEnd="8dp" />
+
+        <EditText
+            android:id="@+id/urlEditText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Enter backend URL"
+            android:inputType="textUri"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:cursorVisible="false"
+            android:background="@android:color/transparent"
+            android:padding="8dp" />
+
+        <ImageButton
+            android:id="@+id/editUrlButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_edit"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Edit URL" />
+
+    </LinearLayout>
 
     <Button
         android:id="@+id/startButton"

@@ -24,7 +24,7 @@ class MainActivity : AppCompatActivity() {
     private val LOCATION_PERMISSION_REQUEST_CODE = 1001
 
     private lateinit var urlEditText: EditText
-    private lateinit var saveButton: Button
+    private lateinit var editUrlButton: ImageButton
     private lateinit var startButton: Button
     private lateinit var stopButton: Button
     private lateinit var logRecyclerView: RecyclerView
@@ -46,31 +46,50 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.setTitle(R.string.app_name)
 
         urlEditText = findViewById(R.id.urlEditText)
-        saveButton = findViewById(R.id.saveButton)
+        editUrlButton = findViewById(R.id.editUrlButton)
         startButton = findViewById(R.id.startButton)
         stopButton = findViewById(R.id.stopButton)
         logRecyclerView = findViewById(R.id.logRecyclerView)
 
         // Set initial URL
         urlEditText.setText(AppPreferences.getBaseUrl(this))
-
-        // Set up button listeners
-        saveButton.setOnClickListener {
-            val newUrl = urlEditText.text.toString().trim()
-            if (newUrl.isNotEmpty()) {
-                AppPreferences.setBaseUrl(this, newUrl)
-                Toast.makeText(this, "URL saved!", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(this, "URL cannot be empty", Toast.LENGTH_SHORT).show()
+        urlEditText.setOnClickListener {
+            if (!urlEditText.isFocusable) {
+                // If not editable, make it editable on click
+                makeUrlEditable(true)
             }
         }
 
+        urlEditText.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val newUrl = urlEditText.text.toString().trim()
+                if (newUrl.isNotEmpty()) {
+                    AppPreferences.setBaseUrl(this, newUrl)
+                    makeUrlEditable(false)
+                    Toast.makeText(this, "URL saved!", Toast.LENGTH_SHORT).show()
+                } else {
+                    // Revert to the old URL if the field is cleared
+                    urlEditText.setText(AppPreferences.getBaseUrl(this))
+                    Toast.makeText(this, "URL cannot be empty.", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        editUrlButton.setOnClickListener {
+            makeUrlEditable(!urlEditText.isFocusable)
+        }
+
         startButton.setOnClickListener {
-            if (hasLocationPermissions()) {
-                startLocationService()
-                updateButtonStates()
+            val currentUrl = urlEditText.text.toString().trim()
+            if (currentUrl.isNotEmpty()) {
+                if (hasLocationPermissions()) {
+                    startLocationService()
+                    updateButtonStates()
+                } else {
+                    requestLocationPermissions()
+                }
             } else {
-                requestLocationPermissions()
+                Toast.makeText(this, "URL cannot be empty", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -164,6 +183,16 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         updateButtonStates()
+    }
+
+    private fun makeUrlEditable(editable: Boolean) {
+        urlEditText.isFocusable = editable
+        urlEditText.isFocusableInTouchMode = editable
+        urlEditText.isCursorVisible = editable
+        if (editable) {
+            urlEditText.requestFocus()
+            urlEditText.setSelection(urlEditText.text.length)
+        }
     }
 
     override fun onPause() {

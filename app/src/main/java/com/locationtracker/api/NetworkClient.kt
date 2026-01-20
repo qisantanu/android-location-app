@@ -18,6 +18,13 @@ object NetworkClient {
 
         val okHttpClient = OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
+            .addInterceptor { chain ->
+                val originalRequest = chain.request()
+                val newRequest = originalRequest.newBuilder()
+                    .header("X-API-KEY", "suxmahdixumotherfukers")
+                    .build()
+                chain.proceed(newRequest)
+            }
             .build()
 
         val retrofit = Retrofit.Builder()

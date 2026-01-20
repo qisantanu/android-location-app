@@ -47,13 +47,15 @@ class LocationRepository(
 
     suspend fun syncLocations() {
         withContext(Dispatchers.IO) {
+            logRepository.insertLog("INFO", "Starting location synchronization.")
             val unsyncedLocations = locationDao.getUnsyncedLocations()
-            val BATCH_THRESHOLD = 5
+            val BATCH_THRESHOLD = 10
             val syncedIds = mutableListOf<Long>()
 
             if (unsyncedLocations.size >= BATCH_THRESHOLD) {
                 val chunks = unsyncedLocations.chunked(BATCH_THRESHOLD)
                 for (chunk in chunks) {
+                    logRepository.insertLog("INFO", "Attempting to sync a chunk of ${chunk.size} locations.")
                     try {
                         val locationDataList = chunk.map { location ->
                             LocationData(
@@ -68,6 +70,7 @@ class LocationRepository(
 
                         val response = apiService.sendLocations(locationDataList)
                         if (response.isSuccessful) {
+                            logRepository.insertLog("INFO", "Successfully synced ${chunk.size} locations.")
                             syncedIds.addAll(chunk.map { it.id })
                         } else {
                             logRepository.insertLog(
@@ -85,6 +88,9 @@ class LocationRepository(
 
             if (syncedIds.isNotEmpty()) {
                 locationDao.markAsSynced(syncedIds)
+                logRepository.insertLog("INFO", "${syncedIds.size} locations marked as synced.")
+            } else {
+                logRepository.insertLog("INFO", "No new locations were marked as synced in this run.")
             }
 
             // Clean up old synced locations (older than 24 hours)
