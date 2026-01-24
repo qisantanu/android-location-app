@@ -9,7 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object NetworkClient {
 
-    fun create(context: Context): LocationApiService {
+    fun <T> create(context: Context, serviceClass: Class<T>): T {
         val baseUrl = AppPreferences.getBaseUrl(context)
 
         val loggingInterceptor = HttpLoggingInterceptor().apply {

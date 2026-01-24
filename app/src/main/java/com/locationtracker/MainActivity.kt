@@ -26,91 +26,98 @@ class MainActivity : AppCompatActivity() {
     private lateinit var urlEditText: EditText
     private lateinit var editUrlButton: ImageButton
     private lateinit var startButton: Button
-    private lateinit var stopButton: Button
-    private lateinit var logRecyclerView: RecyclerView
-    private lateinit var logAdapter: LogAdapter
-
-    private lateinit var logRepository: LogRepository
-    private val activityScope = CoroutineScope(Dispatchers.Main + Job())
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        logRepository = LogRepository(this)
-
-        setContentView(R.layout.activity_main)
-
-        // Initialize views
-        val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
-        setSupportActionBar(toolbar)
-        supportActionBar?.setTitle(R.string.app_name)
-
-        urlEditText = findViewById(R.id.urlEditText)
-        editUrlButton = findViewById(R.id.editUrlButton)
-        startButton = findViewById(R.id.startButton)
-        stopButton = findViewById(R.id.stopButton)
-        logRecyclerView = findViewById(R.id.logRecyclerView)
-
-        // Set initial URL
-        urlEditText.setText(AppPreferences.getBaseUrl(this))
-        urlEditText.setOnClickListener {
-            if (!urlEditText.isFocusable) {
-                // If not editable, make it editable on click
-                makeUrlEditable(true)
-            }
-        }
-
-        urlEditText.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val newUrl = urlEditText.text.toString().trim()
-                if (newUrl.isNotEmpty()) {
-                    AppPreferences.setBaseUrl(this, newUrl)
-                    makeUrlEditable(false)
-                    Toast.makeText(this, "URL saved!", Toast.LENGTH_SHORT).show()
-                } else {
-                    // Revert to the old URL if the field is cleared
-                    urlEditText.setText(AppPreferences.getBaseUrl(this))
-                    Toast.makeText(this, "URL cannot be empty.", Toast.LENGTH_SHORT).show()
+        private lateinit var stopButton: Button
+        private lateinit var infoButton: Button // Declare infoButton
+        private lateinit var logRecyclerView: RecyclerView
+        private lateinit var logAdapter: LogAdapter
+    
+        private lateinit var logRepository: LogRepository
+        private val activityScope = CoroutineScope(Dispatchers.Main + Job())
+    
+        override fun onCreate(savedInstanceState: Bundle?) {
+            super.onCreate(savedInstanceState)
+    
+            logRepository = LogRepository(this)
+    
+            setContentView(R.layout.activity_main)
+    
+            // Initialize views
+            val toolbar = findViewById<androidx.appcompat.widget.Toolbar>(R.id.toolbar)
+            setSupportActionBar(toolbar)
+            supportActionBar?.setTitle(R.string.app_name)
+    
+            urlEditText = findViewById(R.id.urlEditText)
+            editUrlButton = findViewById(R.id.editUrlButton)
+            startButton = findViewById(R.id.startButton)
+            stopButton = findViewById(R.id.stopButton)
+            infoButton = findViewById(R.id.infoButton) // Initialize infoButton
+            logRecyclerView = findViewById(R.id.logRecyclerView)
+    
+            // Set initial URL
+            urlEditText.setText(AppPreferences.getBaseUrl(this))
+            urlEditText.setOnClickListener {
+                if (!urlEditText.isFocusable) {
+                    // If not editable, make it editable on click
+                    makeUrlEditable(true)
                 }
             }
-        }
-
-        editUrlButton.setOnClickListener {
-            makeUrlEditable(!urlEditText.isFocusable)
-        }
-
-        startButton.setOnClickListener {
-            val currentUrl = urlEditText.text.toString().trim()
-            if (currentUrl.isNotEmpty()) {
-                if (hasLocationPermissions()) {
-                    startLocationService()
-                    updateButtonStates()
-                } else {
-                    requestLocationPermissions()
+    
+            urlEditText.setOnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus) {
+                    val newUrl = urlEditText.text.toString().trim()
+                    if (newUrl.isNotEmpty()) {
+                        AppPreferences.setBaseUrl(this, newUrl)
+                        makeUrlEditable(false)
+                        Toast.makeText(this, "URL saved!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        // Revert to the old URL if the field is cleared
+                        urlEditText.setText(AppPreferences.getBaseUrl(this))
+                        Toast.makeText(this, "URL cannot be empty.", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            } else {
-                Toast.makeText(this, "URL cannot be empty", Toast.LENGTH_SHORT).show()
             }
-        }
-
-        stopButton.setOnClickListener {
-            stopLocationService()
+    
+            editUrlButton.setOnClickListener {
+                makeUrlEditable(!urlEditText.isFocusable)
+            }
+    
+            startButton.setOnClickListener {
+                val currentUrl = urlEditText.text.toString().trim()
+                if (currentUrl.isNotEmpty()) {
+                    if (hasLocationPermissions()) {
+                        startLocationService()
+                        updateButtonStates()
+                    } else {
+                        requestLocationPermissions()
+                    }
+                } else {
+                    Toast.makeText(this, "URL cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+            }
+    
+            stopButton.setOnClickListener {
+                stopLocationService()
+                updateButtonStates()
+            }
+    
+            // Set OnClickListener for infoButton
+            infoButton.setOnClickListener {
+                val intent = Intent(this, com.locationtracker.ui.info.InfoDisplayActivity::class.java)
+                startActivity(intent)
+            }
+            
+            // Set up RecyclerView for logs
+            logAdapter = LogAdapter()
+            logRecyclerView.layoutManager = LinearLayoutManager(this)
+            logRecyclerView.adapter = logAdapter
+    
+            if (!hasLocationPermissions()) {
+                requestLocationPermissions()
+            }
             updateButtonStates()
+    
+            observeLogs() // Start observing logs
         }
-
-        // Set up RecyclerView for logs
-        logAdapter = LogAdapter()
-        logRecyclerView.layoutManager = LinearLayoutManager(this)
-        logRecyclerView.adapter = logAdapter
-
-        if (!hasLocationPermissions()) {
-            requestLocationPermissions()
-        }
-        updateButtonStates()
-
-        observeLogs() // Start observing logs
-    }
-
     private fun hasLocationPermissions(): Boolean {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
                 ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
