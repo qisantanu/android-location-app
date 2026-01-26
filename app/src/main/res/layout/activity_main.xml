@@ -76,6 +76,14 @@
         app:iconGravity="textStart"
         android:layout_marginBottom="16dp" />
 
+    <Button
+        android:id="@+id/infoButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="View Information"
+        style="?attr/materialButtonStyle"
+        android:layout_marginBottom="16dp" />
+
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
