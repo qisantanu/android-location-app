@@ -58,6 +58,15 @@ class MainActivity : AppCompatActivity() {
         logRecyclerView = findViewById(R.id.logRecyclerView)
         distanceTextView = findViewById(R.id.distanceTextView)
         locationTextView = findViewById(R.id.locationTextView)
+        val versionTextView = findViewById<TextView>(R.id.versionTextView)
+
+        // Set version text
+        try {
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            versionTextView.text = "Version ${packageInfo.versionName} (${packageInfo.longVersionCode})"
+        } catch (e: Exception) {
+            versionTextView.text = "Version 1.2 (3)"
+        }
 
         // Set initial URL
         urlEditText.setText(AppPreferences.getBaseUrl(this))
