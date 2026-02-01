@@ -1,0 +1,88 @@
+package com.locationtracker.viewmodel
+
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.locationtracker.api.NetworkClient
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
+
+class TrackingViewModel : ViewModel() {
+
+    private val _distance = MutableStateFlow(0)
+    val distance: StateFlow<Int> = _distance
+
+    private val _location = MutableStateFlow("Unknown")
+    val location: StateFlow<String> = _location
+
+    private var isTracking = false
+    private var estimationJob: Job? = null
+    private var apiSyncJob: Job? = null
+
+    fun startTracking(context: Context) {
+        if (isTracking) return
+        
+        isTracking = true
+        _distance.value = 0
+        _location.value = "Unknown"
+        
+        // Start estimation loop - increments every 15 seconds by 150 (10m/s)
+        estimationJob = viewModelScope.launch {
+            while (isActive && isTracking) {
+                delay(15000) // 15 seconds
+                _distance.value += 150 // 10m/s * 15s = 150m
+            }
+        }
+        
+        // Start API sync - fetch authoritative data periodically
+        apiSyncJob = viewModelScope.launch {
+            while (isActive && isTracking) {
+                try {
+                    val apiService = NetworkClient.create(context)
+                    val response = apiService.getLatestInfo()
+                    if (response.isSuccessful) {
+                        response.body()?.let { latestInfo ->
+                            onApiUpdate(latestInfo.distance, latestInfo.location_name)
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Silently handle API errors - estimation continues
+                }
+                delay(30000) // Sync every 30 seconds
+            }
+        }
+    }
+
+    fun stopTracking(context: Context) {
+        isTracking = false
+        estimationJob?.cancel()
+        estimationJob = null
+        
+        // Fetch latest data one more time before stopping
+        viewModelScope.launch {
+            try {
+                val apiService = NetworkClient.create(context)
+                val response = apiService.getLatestInfo()
+                if (response.isSuccessful) {
+                    response.body()?.let { latestInfo ->
+                        onApiUpdate(latestInfo.distance, latestInfo.location_name)
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle error silently
+            }
+        }
+        
+        apiSyncJob?.cancel()
+        apiSyncJob = null
+    }
+
+    fun onApiUpdate(newDist: Int, newLoc: String) {
+        _distance.value = newDist // Overwrite with authoritative data
+        _location.value = newLoc
+    }
+}
