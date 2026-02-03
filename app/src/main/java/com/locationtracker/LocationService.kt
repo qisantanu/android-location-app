@@ -11,6 +11,7 @@ import com.google.android.gms.location.*
 import com.locationtracker.data.LocationData
 import com.locationtracker.repository.LocationRepository
 import com.locationtracker.repository.LogRepository
+import com.locationtracker.util.DeviceIdManager
 import kotlinx.coroutines.*
 
 class LocationService : Service() {
@@ -116,10 +117,11 @@ class LocationService : Service() {
 
     private fun handleLocationUpdate(location: Location) {
         log("INFO", "New location received: Lat=${location.latitude}, Lng=${location.longitude}, Acc=${location.accuracy}")
+        val deviceId = DeviceIdManager.getDeviceId(this)
         val locationData = LocationData(
             lat = location.latitude,
             lng = location.longitude,
-            trip_details = "---",
+            trip_details = deviceId,
             accuracy = location.accuracy,
             timestamp = System.currentTimeMillis()
         )

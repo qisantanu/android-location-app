@@ -6,6 +6,7 @@ import com.locationtracker.api.NetworkClient
 import com.locationtracker.data.LocationData
 import com.locationtracker.data.LocationDatabase
 import com.locationtracker.data.LocationEntity
+import com.locationtracker.util.DeviceIdManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -53,6 +54,7 @@ class LocationRepository(
             val syncedIds = mutableListOf<Long>()
 
             if (unsyncedLocations.size >= BATCH_THRESHOLD) {
+                val deviceId = DeviceIdManager.getDeviceId(context)
                 val chunks = unsyncedLocations.chunked(BATCH_THRESHOLD)
                 for (chunk in chunks) {
                     logRepository.insertLog("INFO", "Attempting to sync a chunk of ${chunk.size} locations.")
@@ -61,7 +63,7 @@ class LocationRepository(
                             LocationData(
                                 lat = location.latitude,
                                 lng = location.longitude,
-                                trip_details = "---",
+                                trip_details = deviceId,
                                 accuracy = location.accuracy,
                                 timestamp = location.timestamp,
                                 id = location.id
