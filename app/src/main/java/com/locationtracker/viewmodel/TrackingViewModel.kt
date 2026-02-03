@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.locationtracker.api.NetworkClient
+import com.locationtracker.util.DeviceIdManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +34,7 @@ class TrackingViewModel : ViewModel() {
         
         // Initialize API service once
         apiService = NetworkClient.create(context)
+        val deviceModelId = DeviceIdManager.getDeviceId(context)
         
         // Start estimation loop - increments every 30 seconds by 150m (5m/s)
         estimationJob = viewModelScope.launch {
@@ -47,7 +49,7 @@ class TrackingViewModel : ViewModel() {
             while (isActive && isTracking) {
                 try {
                     apiService?.let { service ->
-                        val response = service.getLatestInfo()
+                        val response = service.getLatestInfo(deviceModelId)
                         if (response.isSuccessful) {
                             response.body()?.let { latestInfo ->
                                 onApiUpdate(latestInfo.distance, latestInfo.location_name)
@@ -71,7 +73,8 @@ class TrackingViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val apiService = NetworkClient.create(context)
-                val response = apiService.getLatestInfo()
+                val deviceModelId = DeviceIdManager.getDeviceId(context)
+                val response = apiService.getLatestInfo(deviceModelId)
                 if (response.isSuccessful) {
                     response.body()?.let { latestInfo ->
                         onApiUpdate(latestInfo.distance, latestInfo.location_name)

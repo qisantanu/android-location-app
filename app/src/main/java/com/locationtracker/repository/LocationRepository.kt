@@ -50,7 +50,7 @@ class LocationRepository(
         withContext(Dispatchers.IO) {
             logRepository.insertLog("INFO", "Starting location synchronization.")
             val unsyncedLocations = locationDao.getUnsyncedLocations()
-            val BATCH_THRESHOLD = 10
+            val BATCH_THRESHOLD = 5
             val syncedIds = mutableListOf<Long>()
 
             if (unsyncedLocations.size >= BATCH_THRESHOLD) {

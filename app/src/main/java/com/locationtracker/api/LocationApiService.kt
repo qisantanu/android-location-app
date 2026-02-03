@@ -6,6 +6,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface LocationApiService {
     @POST("locations")
@@ -15,5 +16,7 @@ interface LocationApiService {
     suspend fun sendLocations(@Body locations: List<LocationData>): Response<Unit>
 
     @GET("locations/get_latest_info")
-    suspend fun getLatestInfo(): Response<LatestInfoResponse>
+    suspend fun getLatestInfo(
+        @Query("device_model_id") deviceModelId: String
+    ): Response<LatestInfoResponse>
 }
