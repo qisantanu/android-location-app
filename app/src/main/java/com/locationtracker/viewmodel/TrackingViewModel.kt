@@ -22,6 +22,7 @@ class TrackingViewModel : ViewModel() {
     private var isTracking = false
     private var estimationJob: Job? = null
     private var apiSyncJob: Job? = null
+    private var apiService: com.locationtracker.api.LocationApiService? = null
 
     fun startTracking(context: Context) {
         if (isTracking) return
@@ -30,11 +31,14 @@ class TrackingViewModel : ViewModel() {
         _distance.value = 0
         _location.value = "Unknown"
         
-        // Start estimation loop - increments every 15 seconds by 150 (10m/s)
+        // Initialize API service once
+        apiService = NetworkClient.create(context)
+        
+        // Start estimation loop - increments every 30 seconds by 150m (5m/s)
         estimationJob = viewModelScope.launch {
             while (isActive && isTracking) {
-                delay(15000) // 15 seconds
-                _distance.value += 150 // 10m/s * 15s = 150m
+                delay(30000) // 30 seconds
+                _distance.value += 150 // 5m/s * 30s = 150m
             }
         }
         
@@ -42,17 +46,18 @@ class TrackingViewModel : ViewModel() {
         apiSyncJob = viewModelScope.launch {
             while (isActive && isTracking) {
                 try {
-                    val apiService = NetworkClient.create(context)
-                    val response = apiService.getLatestInfo()
-                    if (response.isSuccessful) {
-                        response.body()?.let { latestInfo ->
-                            onApiUpdate(latestInfo.distance, latestInfo.location_name)
+                    apiService?.let { service ->
+                        val response = service.getLatestInfo()
+                        if (response.isSuccessful) {
+                            response.body()?.let { latestInfo ->
+                                onApiUpdate(latestInfo.distance, latestInfo.location_name)
+                            }
                         }
                     }
                 } catch (e: Exception) {
                     // Silently handle API errors - estimation continues
                 }
-                delay(30000) // Sync every 30 seconds
+                delay(60000) // Sync every 60 seconds
             }
         }
     }
