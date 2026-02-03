@@ -10,12 +10,14 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.locationtracker.data.AppPreferences
 import com.locationtracker.repository.LogRepository
 import com.locationtracker.ui.LogAdapter
+import com.locationtracker.viewmodel.TrackingViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 
@@ -29,14 +31,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var stopButton: Button
     private lateinit var logRecyclerView: RecyclerView
     private lateinit var logAdapter: LogAdapter
+    private lateinit var distanceTextView: TextView
+    private lateinit var locationTextView: TextView
 
     private lateinit var logRepository: LogRepository
+    private lateinit var trackingViewModel: TrackingViewModel
     private val activityScope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         logRepository = LogRepository(this)
+        trackingViewModel = ViewModelProvider(this)[TrackingViewModel::class.java]
 
         setContentView(R.layout.activity_main)
 
@@ -50,6 +56,17 @@ class MainActivity : AppCompatActivity() {
         startButton = findViewById(R.id.startButton)
         stopButton = findViewById(R.id.stopButton)
         logRecyclerView = findViewById(R.id.logRecyclerView)
+        distanceTextView = findViewById(R.id.distanceTextView)
+        locationTextView = findViewById(R.id.locationTextView)
+        val versionTextView = findViewById<TextView>(R.id.versionTextView)
+
+        // Set version text
+        try {
+            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            versionTextView.text = "Version ${packageInfo.versionName} (${packageInfo.longVersionCode})"
+        } catch (e: Exception) {
+            versionTextView.text = "Version 1.2 (3)"
+        }
 
         // Set initial URL
         urlEditText.setText(AppPreferences.getBaseUrl(this))
@@ -84,6 +101,7 @@ class MainActivity : AppCompatActivity() {
             if (currentUrl.isNotEmpty()) {
                 if (hasLocationPermissions()) {
                     startLocationService()
+                    trackingViewModel.startTracking(this)
                     updateButtonStates()
                 } else {
                     requestLocationPermissions()
@@ -95,6 +113,7 @@ class MainActivity : AppCompatActivity() {
 
         stopButton.setOnClickListener {
             stopLocationService()
+            trackingViewModel.stopTracking(this)
             updateButtonStates()
         }
 
@@ -109,6 +128,7 @@ class MainActivity : AppCompatActivity() {
         updateButtonStates()
 
         observeLogs() // Start observing logs
+        observeTrackingData() // Start observing tracking data
     }
 
     private fun hasLocationPermissions(): Boolean {
@@ -176,6 +196,20 @@ class MainActivity : AppCompatActivity() {
                 if (logs.isNotEmpty()) {
                     logRecyclerView.scrollToPosition(0)
                 }
+            }
+        }
+    }
+
+    private fun observeTrackingData() {
+        lifecycleScope.launch {
+            trackingViewModel.distance.collect { distance ->
+                distanceTextView.text = "$distance m"
+            }
+        }
+        
+        lifecycleScope.launch {
+            trackingViewModel.location.collect { location ->
+                locationTextView.text = location
             }
         }
     }
