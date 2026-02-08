@@ -76,6 +76,14 @@
         app:iconGravity="textStart"
         android:layout_marginBottom="16dp" />
 
+    <Button
+        android:id="@+id/infoButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Show Info"
+        style="?attr/materialButtonStyle"
+        android:layout_marginBottom="16dp" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -114,7 +122,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Unknown"
-            android:textAppearance="?attr/textAppearanceBody1" />
+            android:textAppearance="?attr/textAppearanceBody1"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Remaining distance:"
+            android:textAppearance="?attr/textAppearanceBody2"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/remainingDistanceTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 m"
+            android:textAppearance="?attr/textAppearanceHeadline6" />
 
     </LinearLayout>
 

@@ -1,6 +1,7 @@
 package com.locationtracker
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -29,14 +30,17 @@ class MainActivity : AppCompatActivity() {
     private lateinit var editUrlButton: ImageButton
     private lateinit var startButton: Button
     private lateinit var stopButton: Button
+    private lateinit var infoButton: Button
     private lateinit var logRecyclerView: RecyclerView
     private lateinit var logAdapter: LogAdapter
     private lateinit var distanceTextView: TextView
     private lateinit var locationTextView: TextView
+    private lateinit var remainingDistanceTextView: TextView
 
     private lateinit var logRepository: LogRepository
     private lateinit var trackingViewModel: TrackingViewModel
     private val activityScope = CoroutineScope(Dispatchers.Main + Job())
+    private var previousRemainingDistance: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,9 +59,11 @@ class MainActivity : AppCompatActivity() {
         editUrlButton = findViewById(R.id.editUrlButton)
         startButton = findViewById(R.id.startButton)
         stopButton = findViewById(R.id.stopButton)
+        infoButton = findViewById(R.id.infoButton)
         logRecyclerView = findViewById(R.id.logRecyclerView)
         distanceTextView = findViewById(R.id.distanceTextView)
         locationTextView = findViewById(R.id.locationTextView)
+        remainingDistanceTextView = findViewById(R.id.remainingDistanceTextView)
         val versionTextView = findViewById<TextView>(R.id.versionTextView)
 
         // Set version text
@@ -115,6 +121,11 @@ class MainActivity : AppCompatActivity() {
             stopLocationService()
             trackingViewModel.stopTracking(this)
             updateButtonStates()
+        }
+
+        infoButton.setOnClickListener {
+            val intent = Intent(this, InfoActivity::class.java)
+            startActivity(intent)
         }
 
         // Set up RecyclerView for logs
@@ -212,7 +223,25 @@ class MainActivity : AppCompatActivity() {
                 locationTextView.text = location
             }
         }
+
+        lifecycleScope.launch {
+            trackingViewModel.remainingDistance.collect { newDistance ->
+                animateRemainingDistance(newDistance)
+            }
+        }
     }
+
+    private fun animateRemainingDistance(newDistance: Int) {
+        val animator = ValueAnimator.ofInt(previousRemainingDistance, newDistance)
+        animator.duration = 500 // milliseconds
+        animator.addUpdateListener { animation ->
+            val value = animation.animatedValue as Int
+            remainingDistanceTextView.text = "$value m"
+        }
+        animator.start()
+        previousRemainingDistance = newDistance
+    }
+
 
     override fun onResume() {
         super.onResume()
