@@ -33,14 +33,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var infoButton: Button
     private lateinit var logRecyclerView: RecyclerView
     private lateinit var logAdapter: LogAdapter
-    private lateinit var distanceTextView: TextView
-    private lateinit var locationTextView: TextView
-    private lateinit var remainingDistanceTextView: TextView
 
     private lateinit var logRepository: LogRepository
     private lateinit var trackingViewModel: TrackingViewModel
     private val activityScope = CoroutineScope(Dispatchers.Main + Job())
-    private var previousRemainingDistance: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,9 +57,6 @@ class MainActivity : AppCompatActivity() {
         stopButton = findViewById(R.id.stopButton)
         infoButton = findViewById(R.id.infoButton)
         logRecyclerView = findViewById(R.id.logRecyclerView)
-        distanceTextView = findViewById(R.id.distanceTextView)
-        locationTextView = findViewById(R.id.locationTextView)
-        remainingDistanceTextView = findViewById(R.id.remainingDistanceTextView)
         val versionTextView = findViewById<TextView>(R.id.versionTextView)
 
         // Set version text
@@ -71,7 +64,7 @@ class MainActivity : AppCompatActivity() {
             val packageInfo = packageManager.getPackageInfo(packageName, 0)
             versionTextView.text = "Version ${packageInfo.versionName} (${packageInfo.longVersionCode})"
         } catch (e: Exception) {
-            versionTextView.text = "Version 1.2 (3)"
+            versionTextView.text = "Version 1.3 (4)"
         }
 
         // Set initial URL
@@ -139,7 +132,6 @@ class MainActivity : AppCompatActivity() {
         updateButtonStates()
 
         observeLogs() // Start observing logs
-        observeTrackingData() // Start observing tracking data
     }
 
     private fun hasLocationPermissions(): Boolean {
@@ -210,38 +202,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-    private fun observeTrackingData() {
-        lifecycleScope.launch {
-            trackingViewModel.distance.collect { distance ->
-                distanceTextView.text = "$distance m"
-            }
-        }
-        
-        lifecycleScope.launch {
-            trackingViewModel.location.collect { location ->
-                locationTextView.text = location
-            }
-        }
-
-        lifecycleScope.launch {
-            trackingViewModel.remainingDistance.collect { newDistance ->
-                animateRemainingDistance(newDistance)
-            }
-        }
-    }
-
-    private fun animateRemainingDistance(newDistance: Int) {
-        val animator = ValueAnimator.ofInt(previousRemainingDistance, newDistance)
-        animator.duration = 500 // milliseconds
-        animator.addUpdateListener { animation ->
-            val value = animation.animatedValue as Int
-            remainingDistanceTextView.text = "$value m"
-        }
-        animator.start()
-        previousRemainingDistance = newDistance
-    }
-
 
     override fun onResume() {
         super.onResume()
