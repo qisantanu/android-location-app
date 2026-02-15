@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.locationtracker.api.NetworkClient
+import com.locationtracker.data.LatestInfoResponse
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,9 @@ class TrackingViewModel : ViewModel() {
     private val _location = MutableStateFlow("Unknown")
     val location: StateFlow<String> = _location
 
+    private val _remainingDistance = MutableStateFlow(0)
+    val remainingDistance: StateFlow<Int> = _remainingDistance
+
     private var isTracking = false
     private var estimationJob: Job? = null
     private var apiSyncJob: Job? = null
@@ -30,6 +34,7 @@ class TrackingViewModel : ViewModel() {
         isTracking = true
         _distance.value = 0
         _location.value = "Unknown"
+        _remainingDistance.value = 0
         
         // Initialize API service once
         apiService = NetworkClient.create(context)
@@ -50,7 +55,7 @@ class TrackingViewModel : ViewModel() {
                         val response = service.getLatestInfo()
                         if (response.isSuccessful) {
                             response.body()?.let { latestInfo ->
-                                onApiUpdate(latestInfo.distance, latestInfo.location_name)
+                                onApiUpdate(latestInfo.distance, latestInfo.locationName, latestInfo.remainingDistance)
                             }
                         }
                     }
@@ -74,7 +79,7 @@ class TrackingViewModel : ViewModel() {
                 val response = apiService.getLatestInfo()
                 if (response.isSuccessful) {
                     response.body()?.let { latestInfo ->
-                        onApiUpdate(latestInfo.distance, latestInfo.location_name)
+                        onApiUpdate(latestInfo.distance, latestInfo.locationName, latestInfo.remainingDistance)
                     }
                 }
             } catch (e: Exception) {
@@ -86,8 +91,9 @@ class TrackingViewModel : ViewModel() {
         apiSyncJob = null
     }
 
-    fun onApiUpdate(newDist: Int, newLoc: String) {
+    fun onApiUpdate(newDist: Int, newLoc: String, newRemainingDist: Int) {
         _distance.value = newDist // Overwrite with authoritative data
         _location.value = newLoc
+        _remainingDistance.value = newRemainingDist
     }
 }
