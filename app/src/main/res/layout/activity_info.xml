@@ -30,4 +30,26 @@
         android:padding="16dp"
         tools:listitem="@layout/info_item" />
 
+    <TextView
+        android:id="@+id/routeInfoTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:text="Route Information"
+        android:textAppearance="?attr/textAppearanceListItem"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/routeInfoRecyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="16dp"
+        tools:listitem="@layout/route_info_item" />
+
 </LinearLayout>

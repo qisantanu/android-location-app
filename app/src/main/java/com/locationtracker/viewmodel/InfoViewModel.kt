@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.locationtracker.api.NetworkClient
+import com.locationtracker.data.RouteDetail
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -12,6 +13,9 @@ class InfoViewModel : ViewModel() {
 
     private val _infoData = MutableStateFlow<Map<String, String>>(emptyMap())
     val infoData: StateFlow<Map<String, String>> = _infoData
+
+    private val _routeInfo = MutableStateFlow<List<Pair<String, RouteDetail>>>(emptyList())
+    val routeInfo: StateFlow<List<Pair<String, RouteDetail>>> = _routeInfo
 
     private var apiService: com.locationtracker.api.LocationApiService? = null
 
@@ -32,6 +36,14 @@ class InfoViewModel : ViewModel() {
                             dataMap["Location Name"] = latestInfo.locationName
                             dataMap["Remaining Distance"] = "${latestInfo.remainingDistance} m"
                             _infoData.value = dataMap
+
+                            // Process route_info
+                            latestInfo.routeInfo?.let {
+                                val routeList = it.map { entry -> Pair(entry.key, entry.value) }
+                                _routeInfo.value = routeList
+                            } ?: run {
+                                _routeInfo.value = emptyList() // Clear if no route_info
+                            }
                         }
                     }
                 }
