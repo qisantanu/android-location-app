@@ -1,11 +1,11 @@
 package com.locationtracker.ui
 
 import androidx.recyclerview.widget.DiffUtil
-import com.locationtracker.data.RouteInfoDetail
+import com.locationtracker.data.RouteDetail
 
 class RouteInfoDiffCallback(
-    private val oldList: List<Pair<String, RouteInfoDetail>>,
-    private val newList: List<Pair<String, RouteInfoDetail>>
+    private val oldList: List<Pair<String, RouteDetail>>,
+    private val newList: List<Pair<String, RouteDetail>>
 ) : DiffUtil.Callback() {
 
     override fun getOldListSize(): Int = oldList.size
