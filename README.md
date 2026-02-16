@@ -13,8 +13,8 @@ A professional Android application for tracking location data with real-time dis
 ## Prerequisites
 
 - Android Studio (latest version recommended)
-- JDK 8 or higher
-- Android SDK (API level 29 or higher)
+- JDK 17 or higher
+- Android SDK (API level 34 or higher)
 - Gradle build system
 
 ## Building the Application
@@ -86,7 +86,7 @@ The current app version is displayed at the bottom of the main screen. Version i
 ## Technical Details
 
 - **Minimum SDK**: 29 (Android 10)
-- **Target SDK**: 33 (Android 13)
+- **Target SDK**: 34 (Android 14)
 - **Architecture**: MVVM with ViewModel and StateFlow
 - **Database**: Room Database for local storage
 - **Networking**: Retrofit with OkHttp
