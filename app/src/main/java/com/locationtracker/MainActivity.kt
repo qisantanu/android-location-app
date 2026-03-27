@@ -64,7 +64,7 @@ class MainActivity : AppCompatActivity() {
             val packageInfo = packageManager.getPackageInfo(packageName, 0)
             versionTextView.text = "Version ${packageInfo.versionName} (${packageInfo.longVersionCode})"
         } catch (e: Exception) {
-            versionTextView.text = "Version 1.4 (5)"
+            versionTextView.text = "Version 1.5 (6)"
         }
 
         // Set initial URL
